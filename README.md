@@ -69,8 +69,16 @@ func main() {
 
 ```
 
-You need to define what kind of migration you need.
-The following is the example migration that inserts master data to User entity.
+You need to define what migration you need when `Up` or `Down` is called.
+```go
+type Migration interface {
+	Up(ctx context.Context) error
+	Down(ctx context.Context) error
+}
+```
+
+It doesn't have to be idempotent because migrent manages whether each migration has already been applied.
+The following is the simple example of a migration that inserts master data to User entity.
 
 ```go
 package example
