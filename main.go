@@ -36,7 +36,11 @@ func Open(driverName, dataSourceName string, options ...ent.Option) (*Client, er
 }
 
 func OpenByMySQLDB(db *sql.DB) *Client {
-	drv := entsql.OpenDB("mysql", db)
+	return OpenByDB(db, "mysql")
+}
+
+func OpenByDB(db *sql.DB, driver string) *Client {
+	drv := entsql.OpenDB(driver, db)
 	client := ent.NewClient(ent.Driver(drv))
 
 	return &Client{entclient: client}
