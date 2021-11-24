@@ -3,12 +3,12 @@
 migrent is a library to manage data migrations for applications using [ent](https://github.com/ent/ent).
 
 Ent is one of the most popular ORM libraries for Golang, and [automatic schema migration](https://entgo.io/docs/migrate) is already supported.
-However, with regard to data migration/incremental migration history management, there is some room for adding more functionalities.
-When an application using ent needs master data (=data needed to be registered in advance), the users need to have the code to manage the data by themselves because `Upsert` is not yet implemented, and it is not possible to "Up" and "Down" migration like
+However, with regard to data migration/incremental migration history management, there is some room for adding more functionality.
+When an application using ent needs master data (=data needed to be registered in advance), the users need to have the code to manage the data by themselves because `Upsert` is not yet implemented, and it is not possible to "Up" and "Down" migrations like with
 existing tools such as [goose](https://github.com/pressly/goose), [sql-migrate](https://github.com/rubenv/sql-migrate),
 and [golang-migrate](https://github.com/golang-migrate/migrate).
 
-migrent enables the apply and roleback of data migrations by making an internal "migration" entity in a DB, while
+migrent enables the applying and rolling back of data migrations by creating an internal "migration" entity in the DB, while
 keeping the great part of ent, such as type-safety.
 
 ## Quick Installation
