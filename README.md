@@ -8,8 +8,8 @@ When an application using ent needs master data (=data needed to be registered i
 existing tools such as [goose](https://github.com/pressly/goose), [sql-migrate](https://github.com/rubenv/sql-migrate),
 and [golang-migrate](https://github.com/golang-migrate/migrate).
 
-migrent enables the apply and roleback of data migrations by making an internal "migration" entity in a DB, while
-keeping the great part of ent, such as type-safety.
+migrent enables to apply(Up) and rollback(Down) of master data migrations by creating an internal "migration" entity in your DB, while
+keeping all the other functionalities of ent, such as type-safety.
 
 ## Quick Installation
 
