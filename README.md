@@ -2,14 +2,17 @@
 
 migrent is a library to manage data migrations for applications using [ent](https://github.com/ent/ent).
 
-Ent is one of the most popular ORM libraries for Golang, and [automatic schema migration](https://entgo.io/docs/migrate) is already supported.
-However, with regard to data migration/incremental migration history management, there is some room for adding more functionalities.
-When an application using ent needs master data (=data needed to be registered in advance), the users need to have the code to manage the data by themselves because it is not possible to "Up" and "Down" migration like
+Ent is one of the most popular ORM libraries for Golang, and [automatic schema migration](https://entgo.io/docs/migrate)
+is already supported.
+However, there is room for adding more functionalities with regard to master data migration.
+When an application using ent needs master data (=data needed to be registered in advance), the users need to have the
+code to manage the data by themselves because it is not possible to do "Up" and "Down" migrations like
 existing tools such as [goose](https://github.com/pressly/goose), [sql-migrate](https://github.com/rubenv/sql-migrate),
 and [golang-migrate](https://github.com/golang-migrate/migrate).
 
-migrent enables to apply(Up) and rollback(Down) of master data migrations by creating an internal "migration" entity in your DB, while
-keeping all the other functionalities of ent, such as type-safety.
+migrent enables to apply(Up) and rollback(Down) of master data migrations by creating an internal "migration" entity in
+your DB, while
+keeping the compatibility for all the other ent functionalities, such as type-safety.
 
 ## Quick Installation
 
@@ -58,7 +61,7 @@ func main() {
 
 	// define your migration
 	migrations := map[migrent.MigrationName]migrent.Migration{
-		"user_data1": example.NewUserMasterDataMigration(masterData, userDBCli.User),
+		"20220712_user_data_v1": example.NewUserMasterDataMigration(masterData, userDBCli.User),
 	}
 
 	// ---  execute migration(Up)
@@ -70,7 +73,8 @@ func main() {
 
 ```
 
-You need to define what migration you need when `Up` or `Down` is called.
+You need to define what operation you need when `Up` or `Down` is called.
+
 ```go
 type Migration interface {
 	Up(ctx context.Context) error
@@ -78,7 +82,16 @@ type Migration interface {
 }
 ```
 
-It doesn't have to be idempotent because migrent manages whether each migration has already been applied.
+- Each migration doesn't have to be idempotent, but we recommend it to be.
+  If your migration is idempotent, you can update the value of existent records
+  by just changing the values in your data files and change the migration name like "data_v1" to "data_v2",
+  and run the migration.
+  Because migrent manages whether each migration has already been applied or not by the migration name,
+  the "data_v2" migration will be executed and update your existent values.
+
+- Migrations are executed by dictionary order (AtoZ) of migration names, so "{timestamp}_{name}" might be a good naming
+  for migrations.
+
 The following is the simple example of a migration that inserts master data to User entity.
 
 ```go
@@ -108,28 +121,27 @@ func NewUserMasterDataMigration(data []ent.User, client *ent.UserClient,
 
 // Up inserts data to User entity
 func (m *UserMasterDataMigration) Up(ctx context.Context) error {
-	data := make([]*ent.UserCreate, len(m.Data))
-	for i, rec := range m.Data {
-		data[i] = m.Client.Create().SetAge(rec.Age).SetName(rec.Name)
+	for _, rec := range m.Data {
+		err := m.Client.Create().SetID(rec.ID).SetAge(rec.Age).SetName(rec.Name).
+			OnConflictColumns(user.FieldID).UpdateNewValues().Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("create User entities: %w", err)
+		}
 	}
-	_, err := m.Client.CreateBulk(data...).Save(ctx)
 
-	if err != nil {
-		return fmt.Errorf("create User entities: %w", err)
-	}
 	return nil
 }
 
 // Down deletes data from User entity
 func (m *UserMasterDataMigration) Down(ctx context.Context) error {
-	users := make([]string, len(m.Data))
+	users := make([]uuid.UUID, len(m.Data))
 	for i, u := range m.Data {
-		users[i] = u.Name
+		users[i] = u.ID
 	}
 
 	_, err := m.Client.
 		Delete().
-		Where(user.NameIn(users...)).Exec(ctx)
+		Where(user.IDIn(users...)).Exec(ctx)
 
 	if err != nil {
 		return fmt.Errorf("delete User entities: %w", err)

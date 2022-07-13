@@ -5,6 +5,6 @@ package runtime
 // The schema-stitching logic is generated in github.com/dakimura/migrent/example/ent/runtime.go
 
 const (
-	Version = "v0.8.0"                                          // Version of ent codegen.
-	Sum     = "h1:xirrW//1oda7pp0bz+XssSOv4/C3nmgYQOxjIfljFt8=" // Sum of ent codegen.
+	Version = "v0.10.1"                                         // Version of ent codegen.
+	Sum     = "h1:dM5h4Zk6yHGIgw4dCqVzGw3nWgpGYJiV4/kyHEF6PFo=" // Sum of ent codegen.
 )
