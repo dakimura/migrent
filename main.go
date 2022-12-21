@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -46,14 +47,17 @@ func OpenByDB(db *sql.DB, driver string) *Client {
 	return &Client{entclient: client}
 }
 
-func (c *Client) Up(ctx context.Context, m map[MigrationName]Migration) error {
+func (c *Client) Up(ctx context.Context, migs map[MigrationName]Migration) error {
 	// create internal table if not exists
 	err := c.createMigrationTable(ctx)
 	if err != nil {
 		return err
 	}
 
-	for name, mi := range m {
+	// sort migration names
+	mNames := sortedMigrationNames(migs)
+
+	for _, name := range mNames {
 		// --- check if the migration is already applied or not
 		m, err := c.entclient.Migration.Query().
 			Where(migration.NameEQ(string(name))).
@@ -68,7 +72,7 @@ func (c *Client) Up(ctx context.Context, m map[MigrationName]Migration) error {
 		}
 
 		// --- apply the migration
-		err = mi.Up(ctx)
+		err = migs[name].Up(ctx)
 		if err != nil {
 			return fmt.Errorf("migration(Up) for %s: %w", name, err)
 		}
@@ -83,14 +87,17 @@ func (c *Client) Up(ctx context.Context, m map[MigrationName]Migration) error {
 	return nil
 }
 
-func (c *Client) Down(ctx context.Context, m map[MigrationName]Migration) error {
+func (c *Client) Down(ctx context.Context, migs map[MigrationName]Migration) error {
 	// implement me. the below is currently just a copypaste of Up()
 	err := c.createMigrationTable(ctx)
 	if err != nil {
 		return err
 	}
 
-	for name, mi := range m {
+	// sort migration names
+	mNames := sortedMigrationNames(migs)
+
+	for _, name := range mNames {
 		// --- check if the migration is already applied or not
 		m, err := c.entclient.Migration.Query().
 			Where(migration.NameEQ(string(name))).
@@ -105,7 +112,7 @@ func (c *Client) Down(ctx context.Context, m map[MigrationName]Migration) error 
 		}
 
 		// --- apply the migration
-		err = mi.Down(ctx)
+		err = migs[name].Down(ctx)
 		if err != nil {
 			return fmt.Errorf("migration(Down) for %s: %w", name, err)
 		}
@@ -130,4 +137,16 @@ func (c *Client) createMigrationTable(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// sortedMigrationNames returns the migration names sorted by dictionary order.
+func sortedMigrationNames(m map[MigrationName]Migration) []MigrationName {
+	var names []MigrationName
+	for name := range m {
+		names = append(names, name)
+	}
+	sort.SliceStable(names, func(i, j int) bool {
+		return names[i] < names[j]
+	})
+	return names
 }

@@ -3,10 +3,11 @@ package example
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 
 	"github.com/dakimura/migrent/example/ent/user"
 
-	ent "github.com/dakimura/migrent/example/ent"
+	"github.com/dakimura/migrent/example/ent"
 )
 
 type UserMasterDataMigration struct {
@@ -24,28 +25,27 @@ func NewUserMasterDataMigration(data []ent.User, client *ent.UserClient,
 
 // Up inserts data to User entity
 func (m *UserMasterDataMigration) Up(ctx context.Context) error {
-	data := make([]*ent.UserCreate, len(m.Data))
-	for i, rec := range m.Data {
-		data[i] = m.Client.Create().SetAge(rec.Age).SetName(rec.Name)
+	for _, rec := range m.Data {
+		err := m.Client.Create().SetID(rec.ID).SetAge(rec.Age).SetName(rec.Name).
+			OnConflictColumns(user.FieldID).UpdateNewValues().Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("create User entities: %w", err)
+		}
 	}
-	_, err := m.Client.CreateBulk(data...).Save(ctx)
 
-	if err != nil {
-		return fmt.Errorf("create User entities: %w", err)
-	}
 	return nil
 }
 
 // Down deletes data from User entity
 func (m *UserMasterDataMigration) Down(ctx context.Context) error {
-	users := make([]string, len(m.Data))
+	users := make([]uuid.UUID, len(m.Data))
 	for i, u := range m.Data {
-		users[i] = u.Name
+		users[i] = u.ID
 	}
 
 	_, err := m.Client.
 		Delete().
-		Where(user.NameIn(users...)).Exec(ctx)
+		Where(user.IDIn(users...)).Exec(ctx)
 
 	if err != nil {
 		return fmt.Errorf("delete User entities: %w", err)
